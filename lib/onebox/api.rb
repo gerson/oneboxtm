@@ -1,18 +1,25 @@
+require 'onebox/rest'
+
 module Onebox
   class API
+
     include Onebox::REST
 
-    attr_accessor :user, :secretKey, :terminal, :license
+    attr_accessor :user, :secretKey, :terminal, :license, :env, :host
 
     SANDBOX_HOST = 'http://pre.rest2.oneboxtickets.com'
     PRODUCTION_HOST = 'http://pre.rest2.oneboxtickets.com'
-    PATH = '/onebox-rest2'
 
     def initialize(environment = 'sandbox', options = {})
       #user, secretKey, terminal, license, channel=nil, pos=nil
       required_params = [:user, :secretKey, :terminal, :license]
       if options.any?
         @env = environment
+        if @env == 'sandbox'
+          @host = SANDBOX_HOST
+        else
+          @host = PRODUCTION_HOST
+        end
         required_params.each do |param|
           unless options[param].present?
             raise ArgumentError.new("You must provide #{param.to_s} param")
