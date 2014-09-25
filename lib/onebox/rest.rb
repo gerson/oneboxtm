@@ -11,9 +11,18 @@ module Onebox
     EVENTS_SEARCH = '/rest/events/search' #list of events which contains the matching sessions. Method: POST or GET
 
     def validateUser
-      response = get_request(USER_VALIDATE_PATH, 'GET')
+      response = get_request(USER_VALIDATE_PATH)
       data = ActiveSupport::JSON.decode(response.body)
       setChannel(data)
+      data
+    end
+
+    def searchEvents
+      validateUser if @channel.nil?
+
+      options = {:OB_Channel => @channel}
+      response = post_request(EVENTS_SEARCH,options)
+      data = ActiveSupport::JSON.decode(response.body)          
     end
 
     private
@@ -38,8 +47,8 @@ module Onebox
       signature = "OB_HMAC "+Base64.encode64(OpenSSL::HMAC.digest('sha1', private_key, canonical)).gsub("\n", '')
     end
 
-    def get_request(endPoint, http_method, params = {})
-      set_uri(endPoint, http_method)
+    def get_request(endPoint, params = {})
+      set_uri(endPoint, 'GET')
       @req = Net::HTTP::Get.new(@uri.request_uri)
       set_headers(@signature, @timestamp, params)
       res = Net::HTTP.start(@uri.hostname, @uri.port) {|http|
@@ -47,8 +56,8 @@ module Onebox
       }
     end
 
-    def post_request(endPoint, http_method, params = {})
-      set_uri(endPoint, http_method)
+    def post_request(endPoint, params = {})
+      set_uri(endPoint, 'POST')
       @req = Net::HTTP::Post.new(@uri.request_uri)
       set_headers(@signature, @timestamp, params)
       res = Net::HTTP.start(@uri.hostname, @uri.port) {|http|

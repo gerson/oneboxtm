@@ -15,11 +15,8 @@ module Onebox
       required_params = [:user, :secretKey, :terminal, :license]
       if options.any?
         @env = environment
-        if @env == 'sandbox'
-          @host = SANDBOX_HOST
-        else
-          @host = PRODUCTION_HOST
-        end
+        @host = @env == 'sandbox' ? SANDBOX_HOST : PRODUCTION_HOST
+
         required_params.each do |param|
           unless options[param].present?
             raise ArgumentError.new("You must provide #{param.to_s} param")
