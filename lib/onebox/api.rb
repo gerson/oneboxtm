@@ -5,7 +5,7 @@ module Onebox
 
     include Onebox::REST
 
-    attr_accessor :user, :secretKey, :terminal, :license, :env, :host
+    attr_accessor :user, :secretKey, :terminal, :license, :env, :host, :channel
 
     SANDBOX_HOST = 'http://pre.rest2.oneboxtickets.com'
     PRODUCTION_HOST = 'http://pre.rest2.oneboxtickets.com'
