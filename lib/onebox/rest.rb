@@ -10,6 +10,7 @@ module Onebox
     PATH = '/onebox-rest2'
     USER_VALIDATE_PATH = '/rest/user/validate' #user info Method: GET
     EVENTS_SEARCH = '/rest/events/search' #list of events which contains the matching sessions. Method: POST or GET
+    SESSION_INFO = '/rest/session/{idSession}/info' 
 
     def validateUser
       response = get_request(USER_VALIDATE_PATH)
@@ -18,12 +19,18 @@ module Onebox
       data
     end
 
-    def searchEvents
+    def searchEvents(params = {})
       validateUser if @channel.nil?
+      headers = {:OB_Channel => @channel}
+      response = post_request(EVENTS_SEARCH,headers,params)
+      ActiveSupport::JSON.decode(response.body)
+    end
 
-      options = {:OB_Channel => @channel}
-      response = post_request(EVENTS_SEARCH,options)
-      data = ActiveSupport::JSON.decode(response.body)          
+    def sessionInfo(params = {})
+      validateUser if @channel.nil?
+      headers = {:OB_Channel => @channel}
+      response = get_request(SESSION_INFO.gsub('{idSession}','108714'),headers,params)
+      ActiveSupport::JSON.decode(response.body)
     end
 
     private
@@ -32,15 +39,23 @@ module Onebox
       @channel = data['entity']['channels']['channel']['@id']
     end
 
-    def addFilters(endPoint, http_method, timestamp)
+    def addFilters(endPoint, http_method, timestamp, params = {})
       raise Error.new("You must provide an endPoint") if endPoint.nil?
       raise Error.new("You must provide http method") if http_method.nil?
-      canonical = canonicalize(endPoint, http_method.upcase, timestamp)
+      canonical = canonicalize(endPoint, http_method.upcase, timestamp, sort_params(params))  
       sign_request(canonical)
     end
 
-    def canonicalize(endPoint, http_method, timestamp)
-      "#{http_method}\n#{timestamp}\n#{PATH}#{endPoint}"
+    def canonicalize(endPoint, http_method, timestamp, params = {})
+      canonical = "#{http_method}\n#{timestamp}\n#{PATH}#{endPoint}"
+      unless params.empty?        
+        params.each_with_index do |(key,value),index| 
+          canonical += "?" if index == 0
+          canonical += "#{key}=#{value}"
+          canonical += "&" unless index == params.size - 1
+        end
+      end
+      canonical
     end
 
     def sign_request(canonical)
@@ -48,10 +63,10 @@ module Onebox
       signature = "OB_HMAC "+Base64.encode64(OpenSSL::HMAC.digest('sha1', private_key, canonical)).gsub("\n", '')
     end
 
-    def get_request(endPoint, params = {})
-      set_uri(endPoint, 'GET')
-      @req = Net::HTTP::Get.new(@uri.request_uri)
-      set_headers(@signature, @timestamp, params)
+    def get_request(endPoint, headers = {}, params = {})
+      set_uri(endPoint, 'GET', params)
+      @req = Net::HTTP::Get.new(@uri.request_uri)      
+      set_headers(@signature, @timestamp, headers)
       res = Net::HTTP.start(@uri.hostname, @uri.port) {|http|
         http.request(@req)
       }
@@ -61,10 +76,11 @@ module Onebox
       res
     end
 
-    def post_request(endPoint, params = {})
-      set_uri(endPoint, 'POST')
+    def post_request(endPoint, headers = {}, params = {})
+      set_uri(endPoint, 'POST', params)
       @req = Net::HTTP::Post.new(@uri.request_uri)
-      set_headers(@signature, @timestamp, params)
+      @req.set_form_data(params) unless params.empty?
+      set_headers(@signature, @timestamp, headers)
       res = Net::HTTP.start(@uri.hostname, @uri.port) {|http|
         http.request(@req)
       }
@@ -74,16 +90,20 @@ module Onebox
       res
     end
 
-    def set_uri(endPoint, http_method)
+    def set_uri(endPoint, http_method, params = {})
       @uri = URI("#{@host}#{PATH}#{endPoint}")
       @timestamp = Time.now.to_i
-      @signature = addFilters(endPoint, http_method, Time.now.to_i)
+      @signature = addFilters(endPoint, http_method, Time.now.to_i,params)
     end
 
-    def set_headers(signature, timestamp, params = {})
+    def sort_params(params)
+      params.sort_by {|k,v| k}
+    end
+
+    def set_headers(signature, timestamp, headers = {})
       raise Error.new("You must provide signature") if signature.nil?
-      if params.any?
-        params.each do |key, value|
+      if headers.any?
+        headers.each do |key, value|
           @req["#{key}"] = value
         end
       end
