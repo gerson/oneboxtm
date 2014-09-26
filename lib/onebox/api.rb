@@ -1,4 +1,5 @@
 require 'onebox/rest'
+require 'onebox/error'
 
 module Onebox
   class API
@@ -19,13 +20,13 @@ module Onebox
 
         required_params.each do |param|
           unless options[param].present?
-            raise ArgumentError.new("You must provide #{param.to_s} param")
+            raise Error.new("You must provide #{param.to_s} param")
           else
             instance_variable_set("@#{param}", options[param])
           end
         end
       else
-        raise ArgumentError.new("You must provide required params")
+        raise Error.new("You must provide required params")
       end
     end
 

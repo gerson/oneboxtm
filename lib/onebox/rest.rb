@@ -2,6 +2,7 @@ require 'base64'
 require 'openssl'
 require 'digest/md5'
 require 'net/http'
+require 'onebox/error'
 
 module Onebox
   module REST
@@ -32,8 +33,8 @@ module Onebox
     end
 
     def addFilters(endPoint, http_method, timestamp)
-      raise ArgumentError.new("You must provide an endPoint") if endPoint.nil?
-      raise ArgumentError.new("You must provide http method") if http_method.nil?
+      raise Error.new("You must provide an endPoint") if endPoint.nil?
+      raise Error.new("You must provide http method") if http_method.nil?
       canonical = canonicalize(endPoint, http_method.upcase, timestamp)
       sign_request(canonical)
     end
@@ -54,6 +55,10 @@ module Onebox
       res = Net::HTTP.start(@uri.hostname, @uri.port) {|http|
         http.request(@req)
       }
+      unless res == Net::HTTPSuccess
+        raise ResponseError.new(res)
+      end
+      res
     end
 
     def post_request(endPoint, params = {})
@@ -63,6 +68,10 @@ module Onebox
       res = Net::HTTP.start(@uri.hostname, @uri.port) {|http|
         http.request(@req)
       }
+      unless res == Net::HTTPSuccess
+        raise ResponseError.new(res)
+      end
+      res
     end
 
     def set_uri(endPoint, http_method)
@@ -72,7 +81,7 @@ module Onebox
     end
 
     def set_headers(signature, timestamp, params = {})
-      raise ArgumentError.new("You must provide signature") if signature.nil?
+      raise Error.new("You must provide signature") if signature.nil?
       if params.any?
         params.each do |key, value|
           @req["#{key}"] = value
