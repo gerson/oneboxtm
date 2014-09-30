@@ -70,7 +70,7 @@ module Onebox
       res = Net::HTTP.start(@uri.hostname, @uri.port) {|http|
         http.request(@req)
       }
-      unless res == Net::HTTPSuccess
+      unless res.code == "200"
         raise ResponseError.new(res)
       end
       res
@@ -84,7 +84,7 @@ module Onebox
       res = Net::HTTP.start(@uri.hostname, @uri.port) {|http|
         http.request(@req)
       }
-      unless res == Net::HTTPSuccess
+      unless res.code == "200"
         raise ResponseError.new(res)
       end
       res
